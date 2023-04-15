@@ -50,13 +50,48 @@ public class Test {
                 q = "SELECT h_id, city, street, state, zip FROM hotel";
                 result = s.executeQuery(q);
                 int hnum = 1;
-                if (!result.next()) System.out.println ("Empty result.");
+                if (!result.next()) System.out.println ("Empty result."); //need to throw exception and exit
                 else {
                     do {
                         System.out.println(hnum + ") " + result.getString("street") + " " + result.getString("city") + " " + result.getString("state") + " " + result.getInt("zip"));
                         hnum += 1;
                     }while(result.next());
                 }
+                
+                //get max hotel number
+                q = "select max(h_id) as mh from hotel";
+                result = s.executeQuery(q);
+                int max_hid=0;
+                if (!result.next()) System.out.println ("Empty result.");
+                else {max_hid = result.getInt("mh");}
+                
+                //ask user to select a hotel
+                System.out.print("Select a hotel number above :");
+                int userHNum = Integer.parseInt(kb.nextLine()) - 1; //subtract 1 because DB indexes hotels from 0
+                System.out.println();
+                while (userHNum > max_hid){
+                    System.out.print("Select a valid hotel number above :");
+                    userHNum = Integer.parseInt(kb.nextLine()) - 1;
+                }
+
+                //prompt for dates in format YYYYMMDD
+                System.out.println("Enter check-in date in format YYYYMMDD");
+                String in_date  = kb.nextLine();
+                System.out.println("Enter check-out date in format YYYYMMDD");
+                String out_date = kb.nextLine();
+                
+                //COME BACK AND ADD CHECKS THAT DATES ARE A) FUTURE and b) CHECK OUT IS AFTER CHECK IN
+                
+                //get the most recent reservation id so we can add next num
+                q = "select max(res_id) as mr from reservation";
+                result = s.executeQuery(q);
+                int newResNum = 0;
+                if (!result.next()) System.out.println ("Empty result.");
+                else {  
+                    newResNum = result.getInt("mr") + 1;
+                }
+
+
 
                 break;
             case 2:
