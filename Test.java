@@ -140,6 +140,7 @@ public class Test {
                 if (!result.next()) System.out.println ("Empty result.");
                 else {  
                     newResNum = result.getInt("mr") + 1;
+                    System.out.println("NEW RES NUM::: " + newResNum);
                 }
 
                 //display available room types
@@ -162,6 +163,7 @@ public class Test {
                     }
                     
                 }
+                System.out.println("ROOM TYPE:::" + userRoom);
 
                 //new or returning customer??
                 System.out.println("If a returning customer, enter your customer id now. Otherwise enter 0:");
@@ -184,6 +186,7 @@ public class Test {
                             System.out.println(cID + "\n\n");
                             newcus = true;
                         }
+                        //check for an exisitng customer!!
                         break;
                     }
                 }
@@ -215,7 +218,7 @@ public class Test {
                     i = s.executeUpdate(q);
 
                     //also need a payment
-                    System.out.println("Enter a card number:");
+                    System.out.println("New customers must have 1 card on file.\nEnter a card number:");
                     long cnum = -1;
                     while (true){
                         if (!kb.hasNextLong()){
@@ -231,19 +234,73 @@ public class Test {
                             break;
                         }
                     }
-                    
+
+                    //ASK FOR EXP
+                    System.out.println("Enter expiration date:");
+                    SimpleDateFormat expfrmt = new SimpleDateFormat("dd-MM-yyyy");
+                    expfrmt.setLenient(false);
+                    String expDate = "";
+                    while (true){
+                        if (kb.hasNext("[0-9][0-9]-[0-9][0-9][0-9][0-9]")){ //pattern for date
+                            expDate = kb.nextLine();
+                            expDate = "01-" + expDate; //first of month for expiration
+                            System.out.println("Exp is ++ " + expDate);
+                            try {
+                                in = sdfrmt.parse(expDate);
+                                //if we get here, it is a valid date
+                                //want to check if it is before TODAY
+                                if (in.before(new Date())){
+                                    System.out.println("Date is not in the future");
+                                    continue;
+                                }
+                                else 
+                                    break;
+                            }
+                            catch (Exception e){
+                                System.out.println("1Invalid date. Enter as MM-YYYY");
+                            }
+                        }
+                        else {
+                            System.out.println("Invalid date. Enter as MM-YYYY");
+                            kb.nextLine(); //consume input
+                        }
+                    }
+
+                    //now need pin
+                    System.out.println("Enter security PIN:");
+                    int pin = -1;
+                    while (true){
+                        if (kb.hasNextInt()){
+                            pin = kb.nextInt();
+                            if (pin > 999 || pin < 0){ //cannot be more than 3 digits
+                                System.out.println("PIN must be 3 digits and cannot be negative");
+                                continue;
+                            }
+                            break;
+                        }
+                        else {
+                            System.out.println("PIN must be a 3 digit integer");
+                        }
+                    }
+
+                    //p_ID = c_ID * c_ID + 4 * c_ID (this is the formula I used when generating data)
+                    int p_ID = cID * cID + 4 * cID;
+                    //now insert into payment table
+                    q = "INSERT INTO payment VALUES (" + p_ID + "," + cID + "," + cnum + "," + pin + ", TO_DATE('" + expDate.toString() + "','DD-MM-YYYY'))";
+                    i = s.executeUpdate(q);
                 }
 
                 
                 //get customer's first payment on file
                 q = "select unique p_id as pd from payment where cust_id = " + cID;
-                
+                result = s.executeQuery(q);
+                result.next();
+                int cust_p_id = result.getInt("pd");
 
-
-
-
-                //now build query to insert
-                // q = "insert into reservation VALUES (" + newResNum + ","  + 
+                //q = "INSERT INTO reservation VALUES (" + res + "," + ran_cust + ", TO_DATE('" + checkIn.toString() + "','YYYY-MM-DD'), TO_DATE('" + out.toString() + "','YYYY-MM-DD')," + hotel_Id + ",'" + rm_typ + "'," + p_ID + ")"; 
+                q = "insert into reservation VALUES (" + newResNum + ","  + cID + ",TO_DATE('" + inDate + "','MM-dd-yyyy')" + ",TO_DATE('" + outDate + "','MM-dd-yyyy')," + userHNum + ",'" + userRoom + "'," + cust_p_id + ")";
+                i = s.executeUpdate(q);
+                System.out.println("Successfully booked reservation..");
 
                 break;
             case 2:
