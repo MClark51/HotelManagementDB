@@ -16,7 +16,7 @@ public class Test {
     System.out.print("Enter password for " + user + ": ");
     pass = kb.nextLine();
 
-    try (Connection con=DriverManager.getConnection("jdbc:oracle:thin:@edgar1.cse.lehigh.edu:1521:cse241",user, pass); Statement s=con.createStatement();) {
+    try (Connection con=DriverManager.getConnection("jdbc:oracle:thin:@edgar1.cse.lehigh.edu:1521:cse241",user, pass); Statement s=con.createStatement()) {
         String q;
         ResultSet result;
         int i;
@@ -308,7 +308,51 @@ public class Test {
                 System.out.println("Front desk not yet implemented!");
                 break;
             case 3:
-                System.out.println("Housekeeping not yet implemented!");
+                System.out.println("\nSelect a hotel to perform housekeeping:");
+                int houseHotelNum = printHotels(user, pass);
+                //now display all rooms that are in need of cleaning for the given hotel
+                q = "SELECT r_num FROM room WHERE h_id = ? AND state = 'needClean'";
+                PreparedStatement stat = con.prepareStatement(q);
+                stat.setInt(1, houseHotelNum);
+                result = stat.executeQuery();
+                ArrayList<Integer> intRooms = new ArrayList<>();
+                result.next(); //dummy line methinks
+                do {
+                    int rn = result.getInt("r_num");
+                    intRooms.add(rn);
+                    System.out.println(rn);
+                }while (result.next());
+                
+
+                for (Integer rm : intRooms){
+                    System.out.println(rm.intValue());
+                }
+                int rmClean = -1;
+                while (true){
+                    System.out.println("\nSelect a room to clean");
+                    if (kb.hasNextInt()){
+                        int temp = kb.nextInt();
+                        if (intRooms.contains(temp)){
+                            rmClean = temp;
+                            break;
+                        }
+                        else {
+                            System.out.println("Room number is not available to be cleaned.");
+                        }
+                    }
+                    else {
+                        System.out.println("Please enter integer room numbers.");
+                    }
+                }
+                //ok we good to do the update
+                q = "UPDATE room SET state = 'clean' where r_num = ? and h_id = ?";
+                stat = con.prepareStatement(q);
+                stat.setInt(1, rmClean);
+                stat.setInt(2, houseHotelNum);
+                i = stat.executeUpdate();
+                System.out.println("Room successfully marked as clean");
+
+
                 break;
             case 4:
                 System.out.println("Business Manager not yet implemented!");
