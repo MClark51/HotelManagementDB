@@ -50,33 +50,34 @@ public class Test {
         switch (loginChoice){
             case 1:
                 //start by displaying the hotels
-                System.out.println("Here are all of the available hotels: \n");
-                q = "SELECT h_id, city, street, state, zip FROM hotel";
-                result = s.executeQuery(q);
-                int hnum = 1;
-                if (!result.next()) System.out.println ("Empty result."); //need to throw exception and exit
-                else {
-                    do {
-                        System.out.println(hnum + ") " + result.getString("street") + " " + result.getString("city") + " " + result.getString("state") + " " + result.getInt("zip"));
-                        hnum += 1;
-                    }while(result.next());
-                }
+                // System.out.println("Here are all of the available hotels: \n");
+                // q = "SELECT h_id, city, street, state, zip FROM hotel";
+                // result = s.executeQuery(q);
+                // int hnum = 1;
+                // if (!result.next()) System.out.println ("Empty result."); //need to throw exception and exit
+                // else {
+                //     do {
+                //         System.out.println(hnum + ") " + result.getString("street") + " " + result.getString("city") + " " + result.getString("state") + " " + result.getInt("zip"));
+                //         hnum += 1;
+                //     }while(result.next());
+                // }
                 
-                //get max hotel number
-                q = "select max(h_id) as mh from hotel";
-                result = s.executeQuery(q);
-                int max_hid=0;
-                if (!result.next()) System.out.println ("Empty result.");
-                else {max_hid = result.getInt("mh");}
+                // //get max hotel number
+                // q = "select max(h_id) as mh from hotel";
+                // result = s.executeQuery(q);
+                // int max_hid=0;
+                // if (!result.next()) System.out.println ("Empty result.");
+                // else {max_hid = result.getInt("mh");}
                 
-                //ask user to select a hotel
-                System.out.print("Select a hotel number above :");
-                int userHNum = Integer.parseInt(kb.nextLine()) - 1; //subtract 1 because DB indexes hotels from 0
-                System.out.println();
-                while (userHNum > max_hid){
-                    System.out.print("Select a valid hotel number above :");
-                    userHNum = Integer.parseInt(kb.nextLine()) - 1;
-                }
+                // //ask user to select a hotel
+                // System.out.print("Select a hotel number above :");
+                // int userHNum = Integer.parseInt(kb.nextLine()) - 1; //subtract 1 because DB indexes hotels from 0
+                // System.out.println();
+                // while (userHNum > max_hid){
+                //     System.out.print("Select a valid hotel number above :");
+                //     userHNum = Integer.parseInt(kb.nextLine()) - 1;
+                // }
+                int userHNum = printHotels(user,pass);
 
                 //CHECKIN DATE
                 String inDate = "";
@@ -168,7 +169,7 @@ public class Test {
                 //new or returning customer??
                 System.out.println("If a returning customer, enter your customer id now. Otherwise enter 0:");
                 int cID = -1;
-                int pID = -1;
+                //int pID = -1;
                 boolean newcus = false;
                 while (true){
                     if (!kb.hasNextInt()){
@@ -323,4 +324,47 @@ public class Test {
     }
     kb.close();
   }
+    static int printHotels(String user, String pass){ //prints hotels and returns VALID user choice
+        try (Connection con=DriverManager.getConnection("jdbc:oracle:thin:@edgar1.cse.lehigh.edu:1521:cse241",user, pass); Statement s=con.createStatement();) {
+            String q;
+            ResultSet result;
+            int i;
+            Scanner kb = new Scanner(System.in);
+
+            q = "SELECT h_id, city, street, state, zip FROM hotel";
+            result = s.executeQuery(q);
+            int hnum = 1;
+            if (!result.next()) System.out.println ("Empty result."); //need to throw exception and exit
+            else {
+                do {
+                    System.out.println(hnum + ") " + result.getString("street") + " " + result.getString("city") + " " + result.getString("state") + " " + result.getInt("zip"));
+                    hnum += 1;
+                }while(result.next());
+            }
+            
+            //get max hotel number
+            q = "select max(h_id) as mh from hotel";
+            result = s.executeQuery(q);
+            int max_hid=0;
+            if (!result.next()) System.out.println ("Empty result.");
+            else {max_hid = result.getInt("mh");}
+            
+            //ask user to select a hotel
+            System.out.print("Select a hotel number above :");
+            int userHNum = Integer.parseInt(kb.nextLine()) - 1; //subtract 1 because DB indexes hotels from 0
+            System.out.println();
+            while (userHNum > max_hid){
+                System.out.print("Select a valid hotel number above :");
+                userHNum = Integer.parseInt(kb.nextLine()) - 1;
+            }
+            return userHNum;
+        }
+        catch (SQLException e){
+            //throws in the event of bad usernames/passwords
+            System.out.println("Bad connection");
+            return -1;
+        }
+
+    }
 }
+
