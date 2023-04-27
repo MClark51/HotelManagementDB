@@ -258,7 +258,7 @@ public class Test {
                                     break;
                             }
                             catch (Exception e){
-                                System.out.println("1Invalid date. Enter as MM-YYYY");
+                                System.out.println("Invalid date. Enter as MM-YYYY");
                             }
                         }
                         else {
@@ -305,7 +305,55 @@ public class Test {
 
                 break;
             case 2:
-                System.out.println("Front desk not yet implemented!");
+                System.out.println("Welcome front desk agent!\n");
+                int choice = 0;
+                System.out.println("Select a hotel to begin.");
+                int hNum = printHotels(user, pass);
+                A:
+                while (true){
+                    System.out.println("Would you like to\n1. Check-in a customer\n2. Check-out a customer\n3. View abandoned reservations\n4. Exit");
+                    if (kb.hasNextInt()){
+                        choice = kb.nextInt();
+                    }
+                    else {
+                        System.out.println("You must enter an integer between 1 and 4.");
+                        kb.next();
+                        continue A;
+                    }
+                    switch (choice){
+                        case 1:
+
+                            break;
+                        case 2:
+                            break;
+                        case 3: //some extra fucntionality
+                            //ABANDON THIS FUNCTIONALITY UNTIL LATER
+                            q = "SELECT * FROM reservation LEFT JOIN check_in WHERE ci_id is NULL";
+                            result = s.executeQuery(q);
+                            if (!result.next()){
+                                System.out.println("There are no abandoned reservations at this hotel");
+                            }
+                            else {
+
+                            }
+
+
+                            break;
+                        case 4:
+                            System.out.println("exiting...");
+                            break A;
+                        default:
+                            System.out.println("Invalid integer option.");
+                            break;
+                    }
+                }
+
+
+
+
+
+
+
                 break;
             case 3:
                 System.out.println("\nSelect a hotel to perform housekeeping:");
