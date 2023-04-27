@@ -16,4 +16,5 @@ At data generation, all customers were created with 2000 "frequent guest points"
 
 ## Interfaces
 
-###
+### Customer Interface
+This is one of the meatier interfaces in terms of code and functionality. Customers start by selecting the hotel they would like to stay at from a list of all available hotels. The hotel list is numbered and the user is prompted to enter the number corresponding to the hotel they would like. For all user inputs going forward, strict checking of (a) input type and (b) that the input is acceptable (i.e the hotel number entered is a valid hotel number). Customers are then prompted to enter a check-in date, which must be in the future, and a check-out date, which must be after the check-in date. Next, they are given options for room type and are then prompted to select one of those types. The customer is then prompted to enter their customer id. If they are a new customer, they should enter 0. At this point, the new customer will be prompted for their name, phone number, address, and credit card information. At this point, the system finds the oldest card on file for the cusotmer and then creates the reservation entry. 
