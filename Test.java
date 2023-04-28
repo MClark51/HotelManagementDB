@@ -141,7 +141,6 @@ public class Test {
                 if (!result.next()) System.out.println ("Empty result.");
                 else {  
                     newResNum = result.getInt("mr") + 1;
-                    System.out.println("NEW RES NUM::: " + newResNum);
                 }
 
                 //display available room types
@@ -167,11 +166,11 @@ public class Test {
                 System.out.println("ROOM TYPE:::" + userRoom);
 
                 //new or returning customer??
-                System.out.println("If a returning customer, enter your customer id now. Otherwise enter 0:");
                 int cID = -1;
                 //int pID = -1;
                 boolean newcus = false;
                 while (true){
+                    System.out.println("If a returning customer, enter your customer id now. Otherwise enter 0:");
                     if (!kb.hasNextInt()){
                         System.out.println("Customer id must be a number");
                         kb.nextLine();
@@ -186,8 +185,20 @@ public class Test {
                             cID = result.getInt("mcid") + 1;
                             System.out.println(cID + "\n\n");
                             newcus = true;
+                            
                         }
                         //check for an exisitng customer!!
+                        else {
+                            //need to check that customer ID exists
+                            q = "SELECT * FROM customer WHERE cust_id = ?";
+                            PreparedStatement st = con.prepareStatement(q);
+                            st.setInt(1, cID);
+                            result = st.executeQuery();
+                            if (!result.next()){
+                                System.out.println("Invalid customer ID. Try again.");
+                                continue;
+                            }
+                        }
                         break;
                     }
                 }
@@ -217,7 +228,7 @@ public class Test {
                     }
                     q = "INSERT INTO customer VALUES(" + cID + ",'" + newName + "','" + newAddr + "'," + pNum + ", 2000)";
                     i = s.executeUpdate(q);
-
+                    System.out.println("\nFor future reference, your customer ID is " + cID + ". KEEP TRACK OF THIS NUMBER\n");
                     //also need a payment
                     System.out.println("New customers must have 1 card on file.\nEnter a card number:");
                     long cnum = -1;
