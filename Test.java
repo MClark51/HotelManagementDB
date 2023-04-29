@@ -1,5 +1,7 @@
 import java.sql.*;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.io.*;
 import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -331,9 +333,39 @@ public class Test {
                         kb.next();
                         continue A;
                     }
+                    SC: //label for switch case
                     switch (choice){
                         case 1:
+                            //this is inefficient
+                            LocalDate cur = LocalDate.now();
+                            DateTimeFormatter dtf = DateTimeFormatter.ofPattern("YYYY-MM-dd");
+                            String curDate = cur.format(dtf);
+                            q = "SELECT * FROM reservation WHERE in_date = to_date('" + curDate  +"','YYYY-mm-DD') AND h_id = " + hNum;
+                            result = s.executeQuery(q);
+                            if (!result.next()){
+                                System.out.println("No reservations scheduled for today");
+                                break SC; //break the switch case
+                            }
+                            else {
+                                ArrayList<Integer> resNums = new ArrayList<>();
+                                int cResNum=-1;
+                                do { 
+                                    cResNum = result.getInt("res_id");
+                                    resNums.add(cResNum);
+                                    System.out.println(cResNum + " " + result.getInt("cust_id") + " " + result.getDate("in_date") + " " + result.getDate("out_date") + " " + result.getString("h_id"));
+                                }while(result.next());
+                            }
+                            //select a res num to checkin
 
+
+
+                            //need to make list of rooms avail, then ask user for a room
+                            ArrayList<Integer> availRooms = new ArrayList<>();
+                            q = "SELECT r_num FROM room WHERE h_id = " + hNum + " AND state='clean'";
+                            result = s.executeQuery(q);
+                            if (!result.next()){
+                                System.out.println("There are no rooms available today.");
+                            }
                             break;
                         case 2:
                             break;
