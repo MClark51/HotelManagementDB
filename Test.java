@@ -335,6 +335,7 @@ public class Test {
                     }
                     SC: //label for switch case
                     switch (choice){
+                        //check in a customer
                         case 1:
                             //this is inefficient
                             LocalDate cur = LocalDate.now();
@@ -343,7 +344,9 @@ public class Test {
                             //!!!!!!!!!!!!!!!!!
                             //DISCLAIMER THIS IS ALL BEORE TODAY
                             //!!!!!!!!!!!!!!!!!!!
-                            q = "SELECT * FROM reservation WHERE in_date > to_date('" + curDate  +"','YYYY-mm-DD') AND h_id = " + hNum;
+
+                            //select all reservations before today that haven't been checked in
+                            q = "SELECT * FROM reservation WHERE in_date >= to_date('" + curDate  +"','YYYY-mm-DD') AND h_id = " + hNum + " AND res_id not in (select res_id from check_in)";
                             result = s.executeQuery(q);
                             ArrayList<Integer> resNums = new ArrayList<>();
                             if (!result.next()){
@@ -351,7 +354,7 @@ public class Test {
                                 break SC; //break the switch case
                             }
                             else {
-                                
+                                //assemble a list of available reservations
                                 int cResNum;
                                 do { 
                                     cResNum = result.getInt("res_id");
@@ -360,9 +363,8 @@ public class Test {
                                 }while(result.next());
                             }
                             //call func to prompt user to select a reservation number
+                            System.out.println("Displayed below are all scheduled reservations before and including today.");
                             int resNumSel = selectInt("Enter a reservation number to start the check-in process", resNums, kb);
-                            
-                            System.out.println("\n\n");
 
                             //need to make list of rooms avail, then ask which room to assign
                             ArrayList<Integer> availRooms = new ArrayList<>();
@@ -383,10 +385,11 @@ public class Test {
                                     System.out.println(curRNum);
                                 }while (result.next());
                             }
-                            //select a room
+
+                            //select a room using custom method
                             int roomSelect = selectInt("Select a room to check-in", availRooms, kb);
 
-                            //need to get the customer's payment ID and customer ID
+                            //need to get the customer's payment ID and customer ID. Take the earliest on file by DEFAULT
                             q = "select cust_id,p_id from payment where cust_id = (select cust_id from reservation where res_id = ?)";
                             stat = con.prepareStatement(q);
                             stat.setInt(1, resNumSel);
@@ -405,16 +408,79 @@ public class Test {
                             int newCheckIn = result.getInt("mcid") + 1;
 
                             //now insert the values
-                            q = "INSERT INTO check_in (cust_id, in_time, res_id, r_num, h_id, p_id, ci_id) VALUES (?,?,?,?,?,?,?)";
+                            q = "INSERT INTO check_in (cust_id, in_time, res_id, r_num, h_id, p_id) VALUES (?,?,?,?,?,?)";
                             stat = con.prepareStatement(q);
                             stat.setInt(1, custId); stat.setTimestamp(2, new java.sql.Timestamp(currDate.getTime())); 
                             stat.setInt(3,resNumSel); stat.setInt(4,roomSelect); stat.setInt(5,hNum); stat.setInt(6, pID);
-                            stat.setInt(7,newCheckIn);
-                            System.out.println("all inserted??");
                             stat.executeUpdate();
+
                             System.out.println("Successfully checked in");
                             break;
                         case 2:
+                            //check out a customer.
+                            //start by displaying all checkins and have the user select an id to start the checkout process
+                            q = "SELECT * from reservation join check_in using (res_id) where res_id not in (select res_id from check_out) and reservation.h_id = ?"; //select reservations that were checked in, but NOT checked out.
+                            stat = con.prepareStatement(q);
+                            stat.setInt(1, hNum);
+                            result = stat.executeQuery();
+                            ArrayList<Integer> checkInIds = new ArrayList<>(); // list to hold all available checkin reservation ids
+                            if (!result.next()){
+                                System.out.println("No available checkins to checkout");
+                            }
+                            else {
+                                //build a list of checkins
+                                int checkInCur = -1;//this will be changed each iteration and added to a list
+                                System.out.format("%-14s\t%-14s\t%-14s\t%-14s\t%-14s%n", "Reservation ID", "Customer ID", "Room Number", "Check-in", "Check-out");
+                                do {
+                                    checkInCur = result.getInt("res_id");
+                                    System.out.format("%-14d\t%-14d\t%-14d\t%-14s\t%-14s%n", checkInCur, result.getInt("cust_id") , result.getInt("r_num") , result.getDate("in_date").toString() , result.getDate("out_date").toString());
+                                    checkInIds.add(checkInCur);
+                                }while (result.next());
+                                System.out.println();
+                            }
+                            int checkOutSelect = selectInt("Select a reservation id to check out", checkInIds, kb);
+
+                            //now prompt user to select payment
+                            q = "SELECT p_id , card_num, secur, exp FROM payment WHERE cust_id in (select cust_id from reservation where res_id = ?)";
+                            stat = con.prepareStatement(q);
+                            stat.setInt(1, checkOutSelect);
+                            result = stat.executeQuery();
+
+                            ArrayList<Integer> paymentIDs = new ArrayList<>();
+                            if (!result.next()){
+                                System.out.println("No available payments for this customer");
+                                //literally impossible but a good check
+                            }
+                            else {
+                                //build list of payment ids for this customer
+                                System.out.format("%-15s\t%-15s\t%-15s\t%-15s\n", "Payment ID", "Card Number", "Security", "EXP");
+                                do{
+                                    int thisPID = result.getInt("p_id");
+                                    paymentIDs.add(thisPID);
+                                    System.out.format("%-15d\t%-15d\t%-15d\t%-15s\n", thisPID, result.getInt("card_num"), result.getInt("secur"), result.getDate("exp").toString());
+                                }while(result.next());
+                            }
+
+                            int pIDSelect = selectInt("Select a payment ID for this customer. Enter -1 if using rewards points", paymentIDs, kb);
+
+
+                            //now calculate the cost of the stay.
+                            //this requries a few queries since the rate could change during the stay
+                            q = "SELECT IN_TIME from check_in where res_id = ?";
+                            stat = con.prepareStatement(q);
+                            stat.setInt(1, checkOutSelect);
+                            result = stat.executeQuery();
+
+                            LocalDate currentDate = LocalDate.now();
+                            LocalDate checkInDate = null;
+                            if (!result.next()){
+                                System.out.println("this is literally impossible");
+                            }
+                            else{
+
+                            }
+
+
                             break;
                         case 3: //some extra fucntionality
                             System.out.println("No\n\n");
