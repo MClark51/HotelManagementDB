@@ -14,6 +14,9 @@ To ensure that I had a memory of which room number was a certain type, I made ne
 ### Frequent Guest Program
 At data generation, all customers were created with 2000 "frequent guest points". Customers can pay for rooms with points and points are accumulated at the end of the stay based on the total cost of the stay. The current accrual rate is 10% of the total cost rounded to the nearest integer. 
 
+### Payments
+At check-in time, the customer checking in is paying with their oldest card on file by default. At checkout they can choose to pay with points or change the card they are using.
+
 ## Interfaces
 
 ### Customer Interface
