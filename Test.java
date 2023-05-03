@@ -1,12 +1,14 @@
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.io.*;
 import java.util.Scanner;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.ArrayList;
 import java.util.Date;
+import java.time.temporal.ChronoUnit;
 
 public class Test {
     public static void main(String[] args) {
@@ -52,33 +54,6 @@ public class Test {
         switch (loginChoice){
             case 1:
                 //start by displaying the hotels
-                // System.out.println("Here are all of the available hotels: \n");
-                // q = "SELECT h_id, city, street, state, zip FROM hotel";
-                // result = s.executeQuery(q);
-                // int hnum = 1;
-                // if (!result.next()) System.out.println ("Empty result."); //need to throw exception and exit
-                // else {
-                //     do {
-                //         System.out.println(hnum + ") " + result.getString("street") + " " + result.getString("city") + " " + result.getString("state") + " " + result.getInt("zip"));
-                //         hnum += 1;
-                //     }while(result.next());
-                // }
-                
-                // //get max hotel number
-                // q = "select max(h_id) as mh from hotel";
-                // result = s.executeQuery(q);
-                // int max_hid=0;
-                // if (!result.next()) System.out.println ("Empty result.");
-                // else {max_hid = result.getInt("mh");}
-                
-                // //ask user to select a hotel
-                // System.out.print("Select a hotel number above :");
-                // int userHNum = Integer.parseInt(kb.nextLine()) - 1; //subtract 1 because DB indexes hotels from 0
-                // System.out.println();
-                // while (userHNum > max_hid){
-                //     System.out.print("Select a valid hotel number above :");
-                //     userHNum = Integer.parseInt(kb.nextLine()) - 1;
-                // }
                 int userHNum = printHotels(user,pass);
 
                 //CHECKIN DATE
@@ -305,7 +280,7 @@ public class Test {
                 }
 
                 
-                //get customer's first payment on file
+                //get customer's first payment on file BY DEFAULT
                 q = "select unique p_id as pd from payment where cust_id = " + cID;
                 result = s.executeQuery(q);
                 result.next();
@@ -314,22 +289,22 @@ public class Test {
                 //q = "INSERT INTO reservation VALUES (" + res + "," + ran_cust + ", TO_DATE('" + checkIn.toString() + "','YYYY-MM-DD'), TO_DATE('" + out.toString() + "','YYYY-MM-DD')," + hotel_Id + ",'" + rm_typ + "'," + p_ID + ")"; 
                 q = "insert into reservation VALUES (" + newResNum + ","  + cID + ",TO_DATE('" + inDate + "','MM-dd-yyyy')" + ",TO_DATE('" + outDate + "','MM-dd-yyyy')," + userHNum + ",'" + userRoom + "'," + cust_p_id + ")";
                 i = s.executeUpdate(q);
-                System.out.println("Successfully booked reservation..");
+                System.out.println("Successfully booked reservation!");
 
                 break;
             case 2:
                 System.out.println("Welcome front desk agent!\n");
                 int choice = 0;
                 System.out.println("Select a hotel to begin.");
-                int hNum = printHotels(user, pass);
+                int hNum = printHotels(user, pass); //call the hotel printing function
                 A:
                 while (true){
-                    System.out.println("Would you like to\n1. Check-in a customer\n2. Check-out a customer\n4. Exit");
+                    System.out.println("Would you like to\n1. Check-in a customer\n2. Check-out a customer\n3. Exit");
                     if (kb.hasNextInt()){
                         choice = kb.nextInt();
                     }
                     else {
-                        System.out.println("You must enter an integer between 1 and 4.");
+                        System.out.println("You must enter an integer between 1 and 3.");
                         kb.next();
                         continue A;
                     }
@@ -338,15 +313,12 @@ public class Test {
                         //check in a customer
                         case 1:
                             //this is inefficient
-                            LocalDate cur = LocalDate.now();
+                            LocalDate cur = LocalDate.now().plusDays(5);
                             DateTimeFormatter dtf = DateTimeFormatter.ofPattern("YYYY-MM-dd");
                             String curDate = cur.format(dtf);
-                            //!!!!!!!!!!!!!!!!!
-                            //DISCLAIMER THIS IS ALL BEORE TODAY
-                            //!!!!!!!!!!!!!!!!!!!
 
                             //select all reservations before today that haven't been checked in
-                            q = "SELECT * FROM reservation WHERE in_date >= to_date('" + curDate  +"','YYYY-mm-DD') AND h_id = " + hNum + " AND res_id not in (select res_id from check_in)";
+                            q = "SELECT * FROM reservation WHERE in_date <= to_date('" + curDate  +"','YYYY-mm-DD') AND h_id = " + hNum + " AND res_id not in (select res_id from check_in)";
                             result = s.executeQuery(q);
                             ArrayList<Integer> resNums = new ArrayList<>();
                             if (!result.next()){
@@ -356,6 +328,7 @@ public class Test {
                             else {
                                 //assemble a list of available reservations
                                 int cResNum;
+                                System.out.println(); //empty to get new line
                                 do { 
                                     cResNum = result.getInt("res_id");
                                     resNums.add(cResNum);
@@ -363,7 +336,7 @@ public class Test {
                                 }while(result.next());
                             }
                             //call func to prompt user to select a reservation number
-                            System.out.println("Displayed below are all scheduled reservations before and including today.");
+                            System.out.println("\nDisplayed above are all check-ins over the next five days.");
                             int resNumSel = selectInt("Enter a reservation number to start the check-in process", resNums, kb);
 
                             //need to make list of rooms avail, then ask which room to assign
@@ -405,7 +378,6 @@ public class Test {
                             q = "SELECT max(ci_id) as mcid from check_in";
                             result = s.executeQuery(q);
                             result.next();
-                            int newCheckIn = result.getInt("mcid") + 1;
 
                             //now insert the values
                             q = "INSERT INTO check_in (cust_id, in_time, res_id, r_num, h_id, p_id) VALUES (?,?,?,?,?,?)";
@@ -417,6 +389,9 @@ public class Test {
                             System.out.println("Successfully checked in");
                             break;
                         case 2:
+                            //variables for later
+                            int custID = -1;
+                            int rNum = -1;
                             //check out a customer.
                             //start by displaying all checkins and have the user select an id to start the checkout process
                             q = "SELECT * from reservation join check_in using (res_id) where res_id not in (select res_id from check_out) and reservation.h_id = ?"; //select reservations that were checked in, but NOT checked out.
@@ -426,6 +401,7 @@ public class Test {
                             ArrayList<Integer> checkInIds = new ArrayList<>(); // list to hold all available checkin reservation ids
                             if (!result.next()){
                                 System.out.println("No available checkins to checkout");
+                                break A;
                             }
                             else {
                                 //build a list of checkins
@@ -441,7 +417,7 @@ public class Test {
                             int checkOutSelect = selectInt("Select a reservation id to check out", checkInIds, kb);
 
                             //now prompt user to select payment
-                            q = "SELECT p_id , card_num, secur, exp FROM payment WHERE cust_id in (select cust_id from reservation where res_id = ?)";
+                            q = "SELECT * FROM payment WHERE cust_id in (select cust_id from reservation where res_id = ?)";
                             stat = con.prepareStatement(q);
                             stat.setInt(1, checkOutSelect);
                             result = stat.executeQuery();
@@ -457,16 +433,21 @@ public class Test {
                                 do{
                                     int thisPID = result.getInt("p_id");
                                     paymentIDs.add(thisPID);
-                                    System.out.format("%-15d\t%-15d\t%-15d\t%-15s\n", thisPID, result.getInt("card_num"), result.getInt("secur"), result.getDate("exp").toString());
+                                    System.out.format("%-15d\t%-15d\t%-15d\t%-15s\n", thisPID, result.getLong("card_num"), result.getInt("secur"), result.getDate("exp").toString());
+                                    //
+                                    
                                 }while(result.next());
                             }
+                            paymentIDs.add(-1); //so we can accept -1 as a valid input
+                            int pIDSelect = selectInt("Select a payment ID for this customer. Enter -1 if using rewards points. Enter -2 to add a new card", paymentIDs, kb);
 
-                            int pIDSelect = selectInt("Select a payment ID for this customer. Enter -1 if using rewards points", paymentIDs, kb);
-
+                            if (pIDSelect == -2){
+                                
+                            }
 
                             //now calculate the cost of the stay.
                             //this requries a few queries since the rate could change during the stay
-                            q = "SELECT IN_TIME from check_in where res_id = ?";
+                            q = "SELECT in_time, r_num, cust_id from check_in where res_id = ?";
                             stat = con.prepareStatement(q);
                             stat.setInt(1, checkOutSelect);
                             result = stat.executeQuery();
@@ -477,17 +458,75 @@ public class Test {
                                 System.out.println("this is literally impossible");
                             }
                             else{
-
+                                do{ //not sure that this runs more than once
+                                    checkInDate = result.getTimestamp("in_time").toLocalDateTime().toLocalDate();
+                                    //grabbing some other necessary values for later
+                                    custID = result.getInt("cust_id");
+                                    rNum = result.getInt("r_num");
+                                }while (result.next());
                             }
 
+                            //loop over the dates
+                            int cost = 0;
+                            LocalDate l = checkInDate;
+                            long daysBetween = ChronoUnit.DAYS.between(checkInDate, currentDate); //get days betwene first and last
+                            for (int m=0; m <= daysBetween; m++){
+                                //prepared statements don't work here for whatever reason
+                                q = "SELECT dollar_val, pointval FROM cost WHERE h_id = " + hNum + " AND rm_type in (select rm_type from reservation where res_id = " + checkOutSelect + ") AND DATE '" + l + "' between start_date and end_date";
+                                result = s.executeQuery(q);    
+                                if (!result.next()){
+                                    System.out.println("No rates for the current date");
+                                    break;
+                                }
+                                else{
+                                    do {
+                                        //if paying with points, grab the point val from the query
+                                        if (pIDSelect == -1){
+                                            cost += result.getInt("pointval");
+                                        }
+                                        //else get the USD cost
+                                        else {
+                                            cost += result.getInt("dollar_val");
+                                        }
+                                    }while (result.next());
+                                    l = l.plusDays(1);
+                                }
+                            }
 
+                            //JUST NOW REALIZING I HAVE NO WAY TO TRACK ACTUAL COSTS LOL
+
+                            //this is also a bad design having these transactions autocommit. If transactions after this fail, then the customer lost their points and there is no way to recover them
+
+                            if (pIDSelect == -1){
+                                System.out.println("Total Cost is " + cost + " points.");
+                                //need to deduct the points from the customer's account
+                                q = "UPDATE customer SET rewards_points = rewards_points - ? WHERE cust_id = ?";
+                                stat = con.prepareStatement(q);
+                                stat.setInt(1, cost);
+                                stat.setInt(2, custID);
+                                stat.executeUpdate();
+                                System.out.println("Successfully deducted customer's points");
+                            }
+                            else {
+                                System.out.println("Total cost is $" + cost + "");
+                                //give the customer their earned points
+                                int newPoints = (int)(0.10 * cost); //this is the formula I use
+                                q = "UPDATE customer SET rewards_points = rewards_points + " + newPoints + " WHERE cust_id = " + custID;
+                                i = s.executeUpdate(q);
+                                stat.executeUpdate();
+                                System.out.println("Successfully added customer's points");
+                            }
+                            //now insert into check-out
+                            q = "INSERT INTO check_out VALUES (?,?,?,?,?,?)";
+                            stat = con.prepareStatement(q);
+                            stat.setInt(1, custID); stat.setTimestamp(2, new Timestamp(System.currentTimeMillis()));
+                            stat.setInt(3,checkOutSelect); stat.setInt(4, rNum);
+                            stat.setInt(5, hNum); stat.setInt(6, pIDSelect);
+                            stat.executeUpdate();
+
+                            System.out.println("Successfully recorded check-out\n");
                             break;
-                        case 3: //some extra fucntionality
-                            System.out.println("No\n\n");
-
-
-                            break;
-                        case 4:
+                        case 3:
                             System.out.println("exiting...");
                             break A;
                         default:
@@ -495,13 +534,6 @@ public class Test {
                             break;
                     }
                 }
-
-
-//TO_DATE('" + outDateTime + "','YYYY-MM-DD/HH24:MI:SS')
-
-
-
-
                 break;
             case 3:
                 System.out.println("\nSelect a hotel to perform housekeeping:");
@@ -518,8 +550,7 @@ public class Test {
                     intRooms.add(rn);
                     System.out.println(rn);
                 }while (result.next());
-                
-
+                //loop over each available room and print it out
                 for (Integer rm : intRooms){
                     System.out.println(rm.intValue());
                 }
@@ -547,8 +578,6 @@ public class Test {
                 stat.setInt(2, houseHotelNum);
                 i = stat.executeUpdate();
                 System.out.println("Room successfully marked as clean");
-
-
                 break;
             case 4:
                 System.out.println("Business Manager not yet implemented!");
@@ -625,5 +654,5 @@ public class Test {
         }
         return selInt;
     }
-}
 
+}
