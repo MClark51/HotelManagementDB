@@ -299,22 +299,17 @@ public class Test {
                             stat.setInt(1, resNumSel);
                             result = stat.executeQuery();
                             result.next(); //dummy line
-                            pID = result.getInt("p_id");
+                            int p_ID = result.getInt("p_id");
                             int custId = result.getInt("cust_id");
                             
                             //get current date
                             Date currDate  = new Date();
 
-                            //get new ci_id num
-                            q = "SELECT max(ci_id) as mcid from check_in";
-                            result = s.executeQuery(q);
-                            result.next();
-
                             //now insert the values
                             q = "INSERT INTO check_in (cust_id, in_time, res_id, r_num, h_id, p_id) VALUES (?,?,?,?,?,?)";
                             stat = con.prepareStatement(q);
                             stat.setInt(1, custId); stat.setTimestamp(2, new java.sql.Timestamp(currDate.getTime())); 
-                            stat.setInt(3,resNumSel); stat.setInt(4,roomSelect); stat.setInt(5,hNum); stat.setInt(6, pID);
+                            stat.setInt(3,resNumSel); stat.setInt(4,roomSelect); stat.setInt(5,hNum); stat.setInt(6, p_ID);
                             stat.executeUpdate();
 
                             System.out.println("Successfully checked in");
