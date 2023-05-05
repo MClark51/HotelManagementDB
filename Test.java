@@ -1,11 +1,10 @@
 import java.sql.*;
+import java.text.DateFormat;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.io.*;
 import java.util.Scanner;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.ArrayList;
 import java.util.Date;
 import java.time.temporal.ChronoUnit;
@@ -24,6 +23,7 @@ public class Test {
         String q;
         ResultSet result;
         int i;
+        PreparedStatement stat;
         /** 
          * INTERFACE LIST:
          * 1) Customer reservation access
@@ -53,175 +53,235 @@ public class Test {
          
         switch (loginChoice){
             case 1:
-                //start by displaying the hotels
-                int userHNum = printHotels(user,pass);
+                //give the customers some options
 
-                //CHECKIN DATE
-                String inDate = "";
-                String outDate = "";
-                Date in = null;
-                Date out = null;
-                System.out.println("Enter check-in date in format MM-dd-yyyy");
-                SimpleDateFormat sdfrmt = new SimpleDateFormat("MM-dd-yyyy");
-                sdfrmt.setLenient(false);
+                OuterCust:
                 while (true){
-                    if (kb.hasNext("[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")){ //pattern for date
-                        inDate = kb.nextLine();
-                        try {
-                            in = sdfrmt.parse(inDate);
-                            //if we get here, it is a valid date
-                            //want to check if it is before TODAY
-                            if (in.before(new Date())){
-                                System.out.println("Check-in cannot be today or earlier. Enter check-in date in format MM-dd-yyyy");
-                                continue;
-                            }
-                            break;
-                        }
-                        catch (Exception e){
-                            System.out.println("Invalid. Enter check-in date in format MM-dd-yyyy");
-                        }
-                    }
-                    else {
-                        System.out.println("Invalid format. Enter check-in date in format MM-dd-yyyy");
-                        kb.nextLine(); //consume input
-                    }
-                }
-                //CHECKOUT DATE
-                System.out.println("Enter check-out date in format MM-dd-yyyy");
-                while (true){
-                    if (kb.hasNext("[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")){ //pattern for date
-                        outDate = kb.nextLine();
-                        try {
-                            out = sdfrmt.parse(outDate);
-                            //if we get here, it is a valid date
-                            //want to check if it is before checkin
-                            if (out.before(in) || out.equals(in)){
-                                System.out.println("Check-out cannot be before check-in. Enter check-in date in format MM-dd-yyyy");
-                                continue;
-                            }
-                            break;
-                        }
-                        catch (Exception e){
-                            System.out.println("Invalid. Enter check-out date in format MM-dd-yyyy");
-                        }
-                    }
-                    else {
-                        System.out.println("Invalid format. Enter check-out date in format MM-dd-yyyy");
-                        kb.nextLine(); //consume input
-                    }
-                }
-                
-                //get the most recent reservation id so we can add next num
-                q = "select max(res_id) as mr from reservation";
-                result = s.executeQuery(q);
-                int newResNum = 0;
-                if (!result.next()) System.out.println ("Empty result.");
-                else {  
-                    newResNum = result.getInt("mr") + 1;
-                }
-
-                //display available room types
-                q = "select unique rm_type as rt from room where h_id = " + userHNum;
-                result = s.executeQuery(q);
-                ArrayList<String> rmTypes = new ArrayList<>();
-                String userRoom = "";
-                if (!result.next()) System.out.println ("Empty result.");
-                else {  
-                    do {
-                        String curString = result.getString("rt");
-                        rmTypes.add(curString);
-                        System.out.println(curString);
-                    }while (result.next());
-                    
-                    while (!rmTypes.contains(userRoom)){
-                        System.out.println("Enter a room type to reserve:");
-                        userRoom = kb.nextLine();
-                    }
-                    
-                }
-
-                //new or returning customer??
-                int cID = -1;
-                int pID = -1;
-                boolean newcus = false;
-                while (true){
-                    System.out.println("If a returning customer, enter your customer id now. Otherwise enter 0:");
-                    if (!kb.hasNextInt()){
-                        System.out.println("Customer id must be a number");
-                        kb.nextLine();
-                    }
-                    else {
-                        cID = kb.nextInt();
-                        if (cID == 0){
-                            //generate new c_ID
-                            q = "select max(cust_id) as mcid from customer";
-                            result = s.executeQuery(q);
-                            result.next();
-                            cID = result.getInt("mcid") + 1;
-                            System.out.println(cID + "\n\n");
-                            newcus = true;
-                            
-                        }
-                        //check for an exisitng customer!!
-                        else {
-                            //need to check that customer ID exists
-                            q = "SELECT * FROM customer WHERE cust_id = ?";
-                            PreparedStatement st = con.prepareStatement(q);
-                            st.setInt(1, cID);
-                            result = st.executeQuery();
-                            if (!result.next()){
-                                System.out.println("Invalid customer ID. Try again.");
-                                continue;
-                            }
-                        }
-                        break;
-                    }
-                }
-                //collect new customer data
-                kb.nextLine();
-                if (newcus){
-                    System.out.print("Welcome new customer. Enter your name: ");
-                    String newName = kb.nextLine();
-                    System.out.print("Enter your address:");
-                    String newAddr = kb.nextLine();
-                    System.out.println("Enter phone number in form ########## with no dashes or spaces: ");
-                    int pNum = -1;
+                    int custOpt = -1;
                     while (true){
+                        //kb.nextLine();
+                        System.out.println("\nSelect an action from the following.\n1. Search for your customer ID (you will need an ID to book reservations)\n2. Book a reservation\n3. Exit");
                         if (!kb.hasNextInt()){
-                            System.out.println("Phone number must consist of numbers only");
-                            kb.nextLine();
+                            System.out.println("You must enter an integer.");
+                            kb.nextLine(); //consume input
                         }
                         else {
-                            pNum = kb.nextInt();
-                            //COULD USE MORE VALIDATION
-                            if (pNum < 1000000000){ //i.e not long enough to be valid
-                                System.out.println("Not enough numbers in phone number. Enter phone number in form ########## with no dashes or spaces:");
-                                continue;
-                            }
-                            break; 
+                            custOpt = kb.nextInt();
+                            if (custOpt > 0 || custOpt < 4)
+                                break;
+                            else
+                                System.out.println("Invalid integer option.");  
                         }
                     }
-                    q = "INSERT INTO customer VALUES(" + cID + ",'" + newName + "','" + newAddr + "'," + pNum + ", 2000)";
-                    i = s.executeUpdate(q);
-                    System.out.println("\nFor future reference, your customer ID is " + cID + ". KEEP TRACK OF THIS NUMBER\n");
-                    /*Call the add card function that takes in suer input and checks that it is valid */
-                    System.out.println("Customers must have 1 credit card on file. ENter that information now:\n");
-                    pID = addCard(kb, cID, user, pass);
-                    i = s.executeUpdate(q);
-                }
-                else {
-                    //get customer's first payment on file BY DEFAULT
-                    q = "select unique p_id as pd from payment where cust_id = " + cID;
-                    result = s.executeQuery(q);
-                    result.next();
-                    pID = result.getInt("pd");
-                }
 
-                //build the query
-                q = "insert into reservation VALUES (" + newResNum + ","  + cID + ",TO_DATE('" + inDate + "','MM-dd-yyyy')" + ",TO_DATE('" + outDate + "','MM-dd-yyyy')," + userHNum + ",'" + userRoom + "'," + pID + ")";
-                i = s.executeUpdate(q);
-                System.out.println("Successfully booked reservation!");
+                    Cust:
+                    switch (custOpt){
+                        case 1:
+                        kb.nextLine(); //flush
+                            System.out.println("\nEnter your name to search for a customer ID:");
+                            String userInput = kb.nextLine();
+                            
+                            
+                            System.out.println(userInput);
+                            q = "SELECT * FROM customer WHERE UPPER(name) = UPPER('" + userInput + "')";
+                            // stat = con.prepareStatement(q);
+                            // stat.setString(1, userInput);
+                            // result = stat.executeQuery();
+                            result = s.executeQuery(q);
 
+                            if (!result.next()){
+                                System.out.println("No names match");
+                                break Cust;
+                            }else {
+                                System.out.format("%-14s\t%-30s\t%-16s%n", "Customer ID", "Name", "Rewards Points");
+                                do {
+                                    System.out.format("%-14d\t%-30s\t%-16d%n", result.getInt("cust_id"), result.getString("name"), result.getInt("rewards_points"));
+                                }while (result.next());
+
+                            }
+                            break;
+
+                        case 2:
+                        //start by displaying the hotels
+                            int userHNum = printHotels(user,pass);
+                            kb.nextLine();//idk lets see
+                            //CHECKIN DATE
+                            String inDate = "";
+                            String outDate = "";
+                            // LocalDate in = null;
+                            // LocalDate out = null;
+                            Date in = null;
+                            Date out = null;
+                            DateFormat sdfrmt = new SimpleDateFormat("MM-dd-yyyy");
+
+                            sdfrmt.setLenient(false);
+                            
+                            System.out.println("Enter check-in date in format MM-dd-yyyy");
+                            while (true){
+                                if (kb.hasNext("[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")){ //pattern for date
+                                    try {
+                                        inDate = kb.nextLine();
+                                        in = sdfrmt.parse(inDate);
+                                        //if we get here, it is a valid date
+                                        //in = LocalDate.parse(inDate, frmter);
+                                        //want to check if it is before TODAY
+                                        if (in.before(new Date())){
+                                            System.out.println("Check-in cannot be today or earlier. Enter check-in date in format MM-dd-yyyy");
+                                            continue;
+                                        }
+                                        break;
+                                    }
+                                    catch (Exception e){
+                                        System.out.println("Invalid date. Enter check-in date in format MM-dd-yyyy");
+                                    }
+                                }
+                                else {
+                                    System.out.println("Invalid format. Enter check-in date in format MM-dd-yyyy");
+                                    kb.nextLine(); //consume input
+                                }
+                            }
+                            //CHECKOUT DATE
+                            System.out.println("Enter check-out date in format MM-dd-yyyy");
+                            while (true){
+                                if (kb.hasNext("[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")){ //pattern for date
+                                    
+                                    try {
+                                        outDate = kb.nextLine();
+                                        //in = LocalDate.parse(outDate, frmter);
+                                        out = sdfrmt.parse(outDate);
+                                        //if we get here, it is a valid date
+                                        //want to check if it is before checkin
+                                        if (out.before(in) || out.equals(in)){
+                                            System.out.println("Check-out cannot be before check-in. Enter check-in date in format MM-dd-yyyy");
+                                            continue;
+                                        }
+                                        break;
+                                    }
+                                    catch (Exception e){
+                                        System.out.println("Invalid date. Enter check-out date in format MM-dd-yyyy");
+                                    }
+                                }
+                                else {
+                                    System.out.println("Invalid format. Enter check-out date in format MM-dd-yyyy");
+                                    kb.nextLine(); //consume input
+                                }
+                            }
+                            
+                            //get the most recent reservation id so we can add next num
+                            q = "select max(res_id) as mr from reservation";
+                            result = s.executeQuery(q);
+                            int newResNum = 0;
+                            if (!result.next()) System.out.println ("Empty result.");
+                            else {  
+                                newResNum = result.getInt("mr") + 1;
+                            }
+
+                            //display available room types
+                            q = "select unique rm_type as rt from room where h_id = " + userHNum;
+                            result = s.executeQuery(q);
+                            ArrayList<String> rmTypes = new ArrayList<>();
+                            String userRoom = "";
+                            if (!result.next()) System.out.println ("Empty result.");
+                            else {  
+                                do {
+                                    String curString = result.getString("rt");
+                                    rmTypes.add(curString);
+                                    System.out.println(curString);
+                                }while (result.next());
+                                
+                                while (!rmTypes.contains(userRoom)){
+                                    System.out.println("Enter a room type to reserve:");
+                                    userRoom = kb.nextLine();
+                                }
+                                
+                            }
+
+                            //new or returning customer??
+                            int cID = -1;
+                            int pID = -1;
+                            boolean newcus = false;
+                            while (true){
+                                System.out.println("If a returning customer, enter your customer id now. Otherwise enter 0:");
+                                if (!kb.hasNextInt()){
+                                    System.out.println("Customer id must be a number");
+                                    kb.nextLine();
+                                }
+                                else {
+                                    cID = kb.nextInt();
+                                    if (cID == 0){
+                                        //generate new c_ID
+                                        q = "select max(cust_id) as mcid from customer";
+                                        result = s.executeQuery(q);
+                                        result.next();
+                                        cID = result.getInt("mcid") + 1;
+                                        System.out.println(cID + "\n\n");
+                                        newcus = true;
+                                        
+                                    }
+                                    //check for an exisitng customer!!
+                                    else {
+                                        //need to check that customer ID exists
+                                        q = "SELECT * FROM customer WHERE cust_id = ?";
+                                        PreparedStatement st = con.prepareStatement(q);
+                                        st.setInt(1, cID);
+                                        result = st.executeQuery();
+                                        if (!result.next()){
+                                            System.out.println("Invalid customer ID. Try again.");
+                                            continue;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                            //collect new customer data
+                            kb.nextLine();
+                            if (newcus){
+                                System.out.print("Welcome new customer. Enter your name: ");
+                                String newName = kb.nextLine();
+                                System.out.print("Enter your address:");
+                                String newAddr = kb.nextLine();
+                                System.out.println("Enter phone number in form ########## with no dashes or spaces: ");
+                                int pNum = -1;
+                                while (true){
+                                    if (!kb.hasNextInt()){
+                                        System.out.println("Phone number must consist of numbers only");
+                                        kb.nextLine();
+                                    }
+                                    else {
+                                        pNum = kb.nextInt();
+                                        //COULD USE MORE VALIDATION
+                                        if (pNum < 1000000000){ //i.e not long enough to be valid
+                                            System.out.println("Not enough numbers in phone number. Enter phone number in form ########## with no dashes or spaces:");
+                                            continue;
+                                        }
+                                        break; 
+                                    }
+                                }
+                                q = "INSERT INTO customer VALUES(" + cID + ",'" + newName + "','" + newAddr + "'," + pNum + ", 2000)";
+                                i = s.executeUpdate(q);
+                                System.out.println("\nFor future reference, your customer ID is " + cID + ". KEEP TRACK OF THIS NUMBER\n");
+                                /*Call the add card function that takes in suer input and checks that it is valid */
+                                System.out.println("Customers must have 1 credit card on file. ENter that information now:\n");
+                                pID = addCard(kb, cID, user, pass);
+                                i = s.executeUpdate(q);
+                            }
+                            else {
+                                //get customer's first payment on file BY DEFAULT
+                                q = "select unique p_id as pd from payment where cust_id = " + cID;
+                                result = s.executeQuery(q);
+                                result.next();
+                                pID = result.getInt("pd");
+                            }
+
+                            //build the query
+                            q = "insert into reservation VALUES (" + newResNum + ","  + cID + ",TO_DATE('" + inDate + "','MM-dd-yyyy')" + ",TO_DATE('" + outDate + "','MM-dd-yyyy')," + userHNum + ",'" + userRoom + "'," + pID + ")";
+                            i = s.executeUpdate(q);
+                            System.out.println("Successfully booked reservation!");
+                            break Cust;
+                        case 3:
+                            break OuterCust;//idk what it breaks
+                    }
+                }
                 break;
             case 2:
                 System.out.println("Welcome front desk agent!\n");
@@ -273,7 +333,7 @@ public class Test {
                             //need to make list of rooms avail, then ask which room to assign
                             ArrayList<Integer> availRooms = new ArrayList<>();
                             q = "SELECT r_num FROM room WHERE h_id = ? and rm_type = (SELECT rm_type FROM reservation WHERE res_id = ?)";
-                            PreparedStatement stat = con.prepareStatement(q);
+                            stat = con.prepareStatement(q);
                             stat.setInt(1, hNum);
                             stat.setInt(2, resNumSel);
                             result = stat.executeQuery();
@@ -470,7 +530,7 @@ public class Test {
                 int houseHotelNum = printHotels(user, pass);
                 //now display all rooms that are in need of cleaning for the given hotel
                 q = "SELECT r_num FROM room WHERE h_id = ? AND state = 'needClean'";
-                PreparedStatement stat = con.prepareStatement(q);
+                stat = con.prepareStatement(q);
                 stat.setInt(1, houseHotelNum);
                 result = stat.executeQuery();
                 ArrayList<Integer> intRooms = new ArrayList<>();
