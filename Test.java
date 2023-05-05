@@ -42,7 +42,7 @@ public class Test {
          * 4) Business Manager
          */
 
-        System.out.println("Welcome to THE Hotel California! Select which user type you would like to continue as:");
+        System.out.println("\nWelcome to THE Hotel California! Select which user type you would like to continue as:");
         System.out.println("1. Customer\n2. Front-Desk\n3. Housekeeping\n4. Business Manager");
         int loginChoice = 0;
 
@@ -54,7 +54,6 @@ public class Test {
         switch (loginChoice){
             case 1:
                 //give the customers some options
-
                 OuterCust:
                 while (true){
                     int custOpt = -1;
@@ -284,13 +283,14 @@ public class Test {
                 }
                 break;
             case 2:
-                System.out.println("Welcome front desk agent!\n");
+                System.out.println("\nWelcome front desk agent!\n");
                 int choice = 0;
                 System.out.println("Select a hotel to begin.");
                 int hNum = printHotels(user, pass); //call the hotel printing function
+                kb.nextLine(); //flush the scanner
                 A:
                 while (true){
-                    System.out.println("Would you like to\n1. Check-in a customer\n2. Check-out a customer\n3. Exit");
+                    System.out.println("\nWould you like to\n1. Check-in a customer\n2. Check-out a customer\n3. Exit");
                     if (kb.hasNextInt()){
                         choice = kb.nextInt();
                     }
@@ -528,6 +528,7 @@ public class Test {
             case 3:
                 System.out.println("\nSelect a hotel to perform housekeeping:");
                 int houseHotelNum = printHotels(user, pass);
+                kb.nextLine(); //flush scanner
                 //now display all rooms that are in need of cleaning for the given hotel
                 q = "SELECT r_num FROM room WHERE h_id = ? AND state = 'needClean'";
                 stat = con.prepareStatement(q);
