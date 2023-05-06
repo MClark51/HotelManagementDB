@@ -250,14 +250,15 @@ public class Test {
                                 System.out.print("Enter your address:");
                                 String newAddr = kb.nextLine();
                                 System.out.println("Enter phone number in form ########## with no dashes or spaces: ");
-                                int pNum = -1;
+                                long pNum = -1;
+
                                 while (true){
-                                    if (!kb.hasNextInt()){
+                                    if (!kb.hasNextLong()){
                                         System.out.println("Phone number must consist of numbers only");
                                         kb.nextLine();
                                     }
                                     else {
-                                        pNum = kb.nextInt();
+                                        pNum = kb.nextLong();
                                         //COULD USE MORE VALIDATION
                                         if (pNum < 1000000000){ //i.e not long enough to be valid
                                             System.out.println("Not enough numbers in phone number. Enter phone number in form ########## with no dashes or spaces:");
@@ -272,7 +273,7 @@ public class Test {
                                 /*Call the add card function that takes in suer input and checks that it is valid */
                                 System.out.println("Customers must have 1 credit card on file. ENter that information now:\n");
                                 pID = addCard(kb, cID, user, pass);
-                                i = s.executeUpdate(q);
+                                //i = s.executeUpdate(q);
                             }
                             else {
                                 //get customer's first payment on file BY DEFAULT
@@ -799,21 +800,22 @@ public class Test {
         }
 
         //ASK FOR EXP
-        System.out.println("Enter expiration date:");
-        SimpleDateFormat expfrmt = new SimpleDateFormat("dd-MM-yyyy");
-        expfrmt.setLenient(false);
+        System.out.println("Enter expiration date of format (MM-YYYY):");
         String expDate = "";
-        Date in = null;
-        SimpleDateFormat sdfrmt = new SimpleDateFormat("MM-dd-yyyy");
+        //Date in = null;
+        LocalDate inner = null;
+        DateTimeFormatter frmter = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        kb.nextLine();
         while (true){
             if (kb.hasNext("[0-9][0-9]-[0-9][0-9][0-9][0-9]")){ //pattern for date
-                expDate = kb.nextLine();
-                String fullDate = "01-" + expDate; //first of month for expiration
+                
                 try {
-                    in = sdfrmt.parse(fullDate);
+                    expDate = kb.nextLine();
+                    String fullDate = "01-" + expDate; //first of month for expiration
+                    inner = LocalDate.parse(fullDate, frmter);
                     //if we get here, it is a valid date
                     //want to check if it is before TODAY
-                    if (in.before(new Date())){
+                    if (inner.isBefore(LocalDate.now())){
                         System.out.println("Date is not in the future");
                         continue;
                     }
@@ -821,7 +823,8 @@ public class Test {
                         break;
                 }
                 catch (Exception e){
-                    System.out.println("Invalid date. Enter as MM-YYYY");
+                    e.printStackTrace();
+                    System.out.println("Invalid date FORMAT. Enter as MM-YYYY");
                 }
             }
             else {
@@ -847,9 +850,10 @@ public class Test {
         }
         //p_ID = c_ID * c_ID + 4 * c_ID (this is the formula I used when generating data)
         int p_ID = cID * cID + 4 * cID;
+        //LocalDate tester = in.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         //now insert into payment table
         try (Connection con=DriverManager.getConnection("jdbc:oracle:thin:@edgar1.cse.lehigh.edu:1521:cse241",user, pass); Statement s=con.createStatement();) {
-            String q = "INSERT INTO payment VALUES (" + p_ID + "," + cID + "," + cnum + "," + pin + ", TO_DATE('" + expDate.toString() + "','DD-MM-YYYY'))";
+            String q = "INSERT INTO payment VALUES (" + p_ID + "," + cID + "," + cnum + "," + pin + ", DATE '" + inner + "')";
             int i = s.executeUpdate(q);
         }
         catch (Exception e){
@@ -860,11 +864,8 @@ public class Test {
 
     public static Date setDates(Scanner kb){
         String inDate = "";
-        //String outDate = "";
-        // LocalDate in = null;
-        // LocalDate out = null;
+
         Date in = null;
-        //Date out = null;
         DateFormat sdfrmt = new SimpleDateFormat("MM-dd-yyyy");
 
         sdfrmt.setLenient(false);
@@ -884,7 +885,7 @@ public class Test {
                     break;
                 }
                 catch (Exception e){
-                    System.out.println("Invalid date. Enter date in format MM-dd-yyyy");
+                    System.out.println("Invalid date format. Enter date in format MM-dd-yyyy");
                 }
             }
             else {
