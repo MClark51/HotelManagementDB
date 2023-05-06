@@ -3,6 +3,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 import java.util.ArrayList;
@@ -46,11 +47,23 @@ public class Test {
         System.out.println("1. Customer\n2. Front-Desk\n3. Housekeeping\n4. Business Manager");
         int loginChoice = 0;
 
-        while (loginChoice > 4 || loginChoice < 1){
+        while (true){
             System.out.print("Enter the number corresponding to your user type: ");
-            loginChoice = Integer.parseInt(kb.nextLine());
+            if (!kb.hasNextInt()){
+                System.out.println("You must enter an integer to continue.");
+                kb.nextLine(); //consume input
+            }
+            else {
+                loginChoice = kb.nextInt();
+                if (loginChoice > 4 || loginChoice < 1){
+                    System.out.println("Invalid choice.");
+                }
+                else{
+                    break;
+                }
+            }
         }
-         
+        kb.nextLine();
         switch (loginChoice){
             case 1:
                 //give the customers some options
@@ -77,12 +90,10 @@ public class Test {
                     switch (custOpt){
                         case 1:
                         kb.nextLine(); //flush
-                            System.out.println("\nEnter your name to search for a customer ID:");
+                            System.out.println("\nEnter your FULL name OR address to search for a customer ID:");
                             String userInput = kb.nextLine();
-                            
-                            
-                            System.out.println(userInput);
-                            q = "SELECT * FROM customer WHERE UPPER(name) = UPPER('" + userInput + "')";
+
+                            q = "SELECT * FROM customer WHERE UPPER(name) = UPPER('" + userInput + "') OR UPPER(address) = UPPER('"+ userInput + "')";
                             // stat = con.prepareStatement(q);
                             // stat.setString(1, userInput);
                             // result = stat.executeQuery();
@@ -92,9 +103,9 @@ public class Test {
                                 System.out.println("No names match");
                                 break Cust;
                             }else {
-                                System.out.format("%-14s\t%-30s\t%-16s%n", "Customer ID", "Name", "Rewards Points");
+                                System.out.format("\n%-14s\t%-30s\t%-50s\t%-14s\t%-16s%n", "Customer ID", "Name", "Address", "Phone Number", "Rewards Points");
                                 do {
-                                    System.out.format("%-14d\t%-30s\t%-16d%n", result.getInt("cust_id"), result.getString("name"), result.getInt("rewards_points"));
+                                    System.out.format("%-14d\t%-30s\t%-50s\t%-14d\t%-16d%n", result.getInt("cust_id"), result.getString("name"), result.getString("address"),result.getLong("phone_num"), result.getInt("rewards_points"));
                                 }while (result.next());
 
                             }
@@ -146,7 +157,6 @@ public class Test {
                                     
                                     try {
                                         outDate = kb.nextLine();
-                                        //in = LocalDate.parse(outDate, frmter);
                                         out = sdfrmt.parse(outDate);
                                         //if we get here, it is a valid date
                                         //want to check if it is before checkin
@@ -285,9 +295,9 @@ public class Test {
             case 2:
                 System.out.println("\nWelcome front desk agent!\n");
                 int choice = 0;
-                System.out.println("Select a hotel to begin.");
+                System.out.println("Select a hotel to begin.\n");
                 int hNum = printHotels(user, pass); //call the hotel printing function
-                kb.nextLine(); //flush the scanner
+                //kb.nextLine(); //flush the scanner
                 A:
                 while (true){
                     System.out.println("\nWould you like to\n1. Check-in a customer\n2. Check-out a customer\n3. Exit");
@@ -296,7 +306,7 @@ public class Test {
                     }
                     else {
                         System.out.println("You must enter an integer between 1 and 3.");
-                        kb.next();
+                        kb.nextLine();
                         continue A;
                     }
                     SC: //label for switch case
@@ -309,7 +319,7 @@ public class Test {
                             String curDate = cur.format(dtf);
 
                             //select all reservations before today that haven't been checked in
-                            q = "SELECT * FROM reservation WHERE in_date <= to_date('" + curDate  +"','YYYY-mm-DD') AND h_id = " + hNum + " AND res_id not in (select res_id from check_in)";
+                            q = "SELECT * FROM reservation join customer using(cust_id) WHERE in_date <= to_date('" + curDate  +"','YYYY-mm-DD') AND h_id = " + hNum + " AND res_id not in (select res_id from check_in)";
                             result = s.executeQuery(q);
                             ArrayList<Integer> resNums = new ArrayList<>();
                             if (!result.next()){
@@ -319,11 +329,12 @@ public class Test {
                             else {
                                 //assemble a list of available reservations
                                 int cResNum;
-                                System.out.println(); //empty to get new line
+                                
+                                System.out.format("%-14s\t%-14s\t%-14s\t%-14s\t%-14s%n", "Reservation ID", "Customer ID", "Name", "Check-in", "Check-out");
                                 do { 
                                     cResNum = result.getInt("res_id");
                                     resNums.add(cResNum);
-                                    System.out.println(cResNum + " " + result.getInt("cust_id") + " " + result.getDate("in_date") + " " + result.getDate("out_date") + " " + result.getString("h_id"));
+                                    System.out.format("%-14d\t%-14d\t%-14s\t%-14s\t%-14s%n", cResNum, result.getInt("cust_id") , result.getString("name") , result.getDate("in_date").toString() , result.getDate("out_date").toString());
                                 }while(result.next());
                             }
                             //call func to prompt user to select a reservation number
@@ -343,6 +354,7 @@ public class Test {
                             }
                             else {
                                 int curRNum;
+                                System.out.println();
                                 do {
                                     curRNum = result.getInt("r_num");
                                     availRooms.add(curRNum);
@@ -373,7 +385,7 @@ public class Test {
                             stat.executeUpdate();
 
                             System.out.println("Successfully checked in");
-                            break;
+                            break SC;
                         case 2:
                             //variables for later
                             int custID = -1;
@@ -412,6 +424,7 @@ public class Test {
                             ArrayList<Integer> paymentIDs = new ArrayList<>();
                             if (!result.next()){
                                 System.out.println("No available payments for this customer");
+                                break A;
                                 //literally impossible but a good check
                             }
                             else {
@@ -446,6 +459,7 @@ public class Test {
                             LocalDate checkInDate = null;
                             if (!result.next()){
                                 System.out.println("this is literally impossible");
+                                break A;
                             }
                             else{
                                 do{ //not sure that this runs more than once
@@ -466,7 +480,7 @@ public class Test {
                                 result = s.executeQuery(q);    
                                 if (!result.next()){
                                     System.out.println("No rates for the current date");
-                                    break;
+                                    break A;
                                 }
                                 else{
                                     do {
@@ -515,7 +529,7 @@ public class Test {
                             stat.executeUpdate();
 
                             System.out.println("Successfully recorded check-out\n");
-                            break;
+                            break SC;
                         case 3:
                             System.out.println("exiting...");
                             break A;
@@ -571,7 +585,127 @@ public class Test {
                 System.out.println("Room successfully marked as clean");
                 break;
             case 4:
-                System.out.println("Business Manager not yet implemented!");
+                int busOp = 0; //operation selection for the business manager
+                BusMan:
+                while(true){
+                    while (true){
+                        System.out.println("Welcome business manager! Select an option from the following:\n1.Change rates\n2.Exit");
+                        if (!kb.hasNextInt()){
+                            System.out.println("You must enter an integer.");
+                            kb.nextLine(); //consume input
+                        }
+                        else {
+                            busOp = kb.nextInt();
+                            if (busOp > 0 || busOp < 3)
+                                break;
+                            else
+                                System.out.println("Invalid integer option.");  
+                        }
+                    }
+                    kb.nextLine();//buffer clear
+
+                    switch (busOp){
+                        case 1:
+                            //need a hotel number
+                            System.out.println("\nSelect a hotel from below:");
+                            hNum = printHotels(user, pass);
+
+                            //print all room types
+                            q = "select unique(rm_type) from room where h_id = " + hNum;
+                            result = s.executeQuery(q);
+                            ArrayList<String> rmTypes = new ArrayList<>();
+                            String userRoom = "";
+                            if (!result.next()) {System.out.println ("Empty result."); break BusMan;}
+                            else {  
+                                System.out.println("\nRoom Types:");
+                                do {
+                                    String curString = result.getString("rm_type");
+                                    rmTypes.add(curString);
+                                    System.out.println(curString);
+                                }while (result.next());
+                            }
+                            while (!rmTypes.contains(userRoom)){
+                                System.out.println("\nEnter a room type to reserve:");
+                                userRoom = kb.nextLine();
+                            }
+
+                            System.out.println();
+                            LocalDate in = null;
+                            LocalDate out = null;
+
+                            //loop until the inputted dates are okay
+                            DateLoop:
+                            while (true){
+                                //call method to ask user for a start date
+                                System.out.println("\nEnter the start date for the new rate");
+                                in = setDates(kb).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                                //call method to ask user for a end date
+                                System.out.println("Enter the end rate");
+                                out = setDates(kb).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+                                //if end date is after start date, then break
+                                if (out.isBefore(in)){
+                                    System.out.println("End date must be after start date\n");
+                                    continue;
+                                }
+                                //otherwise restart
+                                break DateLoop;
+                            }
+                            //now ask for new rate
+                            System.out.println("Enter the new rate:");
+                            int rate = 0;
+                            NRate:
+                            while(true){
+                                if (!kb.hasNextInt()){
+                                    System.out.println("Rate must be an integer value");
+                                    kb.nextLine();
+                                }
+                                else{
+                                    rate = kb.nextInt();
+                                    if (rate<=0){
+                                        System.out.println("Rate must be a non negative integer");
+                                        continue;
+                                    }
+                                    else
+                                        break NRate;
+                                }
+                            }
+                            int pointval = (int) (rate * 0.75);
+
+                            //FIRST we should check if these dates already have an associated rate. If they do, then we need to reassign the start and end of the given rows before inserting the new ones
+                            q = "SELECT * FROM cost WHERE h_id = " + hNum + " AND rm_type = '" + userRoom +"' AND (DATE '" + out + "' between start_date and end_date OR DATE '" + in + "' between start_date and end_date)";
+                            result = s.executeQuery(q);
+                            String tempq = "INSERT INTO cost VALUES (?, ?, ?, ?, DATE '" + in + "', DATE '" + out + "')";
+                            if (result.next()){
+                                LocalDate oldEnd = result.getDate("end_date").toLocalDate();
+                                int oldCost = result.getInt("dollar_val");
+                                int oldPoint = result.getInt("pointval");
+                                in = in.minusDays(1); //this is new end date of the row that contains the start date
+                                q = "UPDATE cost SET end_date = DATE '" + in + "' WHERE h_id = " + hNum + " AND rm_type = '" + userRoom +"' AND (DATE '" + in + "' between start_date and end_date)";
+                                i = s.executeUpdate(q);
+                                out = out.plusDays(1);
+                                //insert a new row that new in through the old end
+                                q = "INSERT INTO cost VALUES (?, ?, ?, ?, DATE '" + out + "', DATE '" + oldEnd + "')";
+                                stat = con.prepareStatement(q);
+                                stat.setInt(1, hNum);
+                                stat.setString(2, userRoom);
+                                stat.setInt(3, oldCost); stat.setInt(4, oldPoint);
+                                stat.executeQuery();
+                                
+                            }
+                            //this executes no matter what
+                            stat = con.prepareStatement(tempq);
+                            stat.setInt(1, hNum);
+                            stat.setString(2, userRoom);
+                            stat.setInt(3, rate); stat.setInt(4, pointval);
+                            stat.executeQuery();
+                        
+                            System.out.println("Successfully updated/created rates.");
+                            break;
+                        case 2:
+                            break BusMan;
+
+                    }
+                }
                 break;
             default:
                 System.out.println("No case for associated integer");
@@ -580,7 +714,8 @@ public class Test {
     }
     catch (SQLException e){
         //throws in the event of bad usernames/passwords
-        System.out.println("Bad connection");
+        //System.out.println("Bad connection");
+        e.printStackTrace();
     }
     kb.close();
   }
@@ -621,7 +756,7 @@ public class Test {
         }
         catch (SQLException e){
             //throws in the event of bad usernames/passwords
-            System.out.println("Bad connection");
+            e.printStackTrace();
             return -1;
         }
 
@@ -640,7 +775,7 @@ public class Test {
             }
             else {
                 System.out.println("Selected value must be an integer...");
-                kb.next();
+                kb.nextLine();
             }
         }
         return selInt;
@@ -721,6 +856,44 @@ public class Test {
             System.out.println("Error..");
         }
         return p_ID;
+    }
+
+    public static Date setDates(Scanner kb){
+        String inDate = "";
+        //String outDate = "";
+        // LocalDate in = null;
+        // LocalDate out = null;
+        Date in = null;
+        //Date out = null;
+        DateFormat sdfrmt = new SimpleDateFormat("MM-dd-yyyy");
+
+        sdfrmt.setLenient(false);
+
+        while (true){
+            if (kb.hasNext("[0-9][0-9]-[0-9][0-9]-[0-9][0-9][0-9][0-9]")){ //pattern for date
+                try {
+                    inDate = kb.nextLine();
+                    in = sdfrmt.parse(inDate);
+                    //if we get here, it is a valid date
+                    //in = LocalDate.parse(inDate, frmter);
+                    //want to check if it is before TODAY
+                    if (in.before(new Date())){
+                        System.out.println("Start date cannot be today or earlier. Enter start date in format MM-dd-yyyy");
+                        continue;
+                    }
+                    break;
+                }
+                catch (Exception e){
+                    System.out.println("Invalid date. Enter date in format MM-dd-yyyy");
+                }
+            }
+            else {
+                System.out.println("Invalid format. Enter date in format MM-dd-yyyy");
+                kb.nextLine(); //consume input
+            }
+        }
+        return in;
+
     }
 
 }
