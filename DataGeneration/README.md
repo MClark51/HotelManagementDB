@@ -4,7 +4,7 @@ The contents of this directory should be used to create and populate the databas
 Here's a brief overview of the contents of this directory:
 - The subdirectory `/sql` contains DDL for the tables as well as a few triggers written in PL/SQL for the database.
 - The subdirectory `/src` contains the Java code that generates and populates the tables, as well as two classes that assist in this process.
-    - `/src/datafiles` contains .txt files with randomly generated source data for the tables.
+    - `/src/datafiles` contains .txt files with randomly generated source data for the tables from randomlists.com.
 - The subdirectory `/build` contains files necessary to build and run the program.
 
 ### Setup
