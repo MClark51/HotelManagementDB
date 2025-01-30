@@ -1,2 +1,2 @@
-Main-class: Test
+Main-class: DataGen
 Class-Path: ojdbc10.jar
