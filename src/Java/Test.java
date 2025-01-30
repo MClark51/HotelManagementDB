@@ -21,7 +21,7 @@ public class Test {
     System.out.print("Enter password for " + user + ": ");
     pass = kb.nextLine();
 
-    try (Connection con=DriverManager.getConnection("jdbc:oracle:thin:@edgar1.cse.lehigh.edu:1521:cse241",user, pass); Statement s=con.createStatement()) {
+    try (Connection con=DriverManager.getConnection("YOUR ORACLE DB CONNECTION STRING",user, pass); Statement s=con.createStatement()) {
         String q;
         ResultSet result;
         int i;
@@ -498,10 +498,6 @@ public class Test {
                                     l = l.plusDays(1);
                                 }
                             }
-
-                            //JUST NOW REALIZING I HAVE NO WAY TO TRACK ACTUAL COSTS LOL
-
-                            //this is also a bad design having these transactions autocommit. If transactions after this fail, then the customer lost their points and there is no way to recover them
 
                             if (pIDSelect == -1){
                                 System.out.println("Total Cost is " + cost + " points.");
